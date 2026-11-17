@@ -14,11 +14,8 @@ use self_update::update::ReleaseUpdate;
 pub const CURRENT_VERSION: &str = env!("CARGO_PKG_VERSION");
 const BIN_NAME: &str = "offsales-pos";
 
-/// Default "owner/repo" for updates. Can be set at build time with the
-/// `POS_UPDATE_REPO` env var, and overridden at runtime in Settings.
-pub fn default_repo() -> &'static str {
-    option_env!("POS_UPDATE_REPO").unwrap_or("")
-}
+/// The GitHub "owner/repo" every installation updates from.
+pub const REPO: &str = "mcmuchenje/offsales-pos";
 
 #[derive(Clone, Debug, Default)]
 pub enum UpdateState {
@@ -40,7 +37,7 @@ fn builder(repo: &str) -> Result<Box<dyn ReleaseUpdate>, String> {
         .trim()
         .split_once('/')
         .filter(|(o, n)| !o.is_empty() && !n.is_empty())
-        .ok_or_else(|| "Update source not configured (Settings → Update source, e.g. myname/offsales-pos)".to_string())?;
+        .ok_or_else(|| "The update source isn't a valid GitHub owner/repo".to_string())?;
     Update::configure()
         .repo_owner(owner)
         .repo_name(name)

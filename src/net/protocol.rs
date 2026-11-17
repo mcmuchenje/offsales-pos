@@ -9,7 +9,7 @@ pub const DISCOVERY_PORT: u16 = 47801;
 pub const DISCOVERY_PROBE: &[u8] = b"OFFSALES-POS-DISCOVER-1";
 
 /// Settings the server shares with every till.
-pub const SHARED_SETTINGS: &[&str] = &["shop_name", "auto_lock_minutes", "update_repo"];
+pub const SHARED_SETTINGS: &[&str] = &["shop_name", "auto_lock_minutes"];
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct SaleLine {
