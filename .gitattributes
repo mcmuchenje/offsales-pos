@@ -1,0 +1,12 @@
+# Store and check out text files with LF line endings on every machine,
+# so git doesn't warn about converting LF to CRLF.
+* text=auto eol=lf
+
+# Binary files: never convert.
+*.exe    binary
+*.zip    binary
+*.xlsx   binary
+*.png    binary
+*.ico    binary
+*.bmp    binary
+*.db     binary
