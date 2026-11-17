@@ -1,0 +1,50 @@
+# Push a tag like v0.2.0 (matching the version in Cargo.toml) to publish a release with:
+#   OffSalesPOS-Setup-<version>.exe                       installer for new tills
+#   offsales-pos-<version>-x86_64-pc-windows-msvc.zip     used by the in-app updater
+name: release
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    env:
+      POS_UPDATE_REPO: ${{ github.repository }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Check tag matches Cargo.toml version
+        shell: pwsh
+        run: |
+          $v = (Select-String -Path Cargo.toml -Pattern '^version\s*=\s*"([^"]+)"' | Select-Object -First 1).Matches[0].Groups[1].Value
+          if ("v$v" -ne "${{ github.ref_name }}") { throw "Tag ${{ github.ref_name }} does not match Cargo.toml version $v" }
+
+      - name: Test
+        run: cargo test --release
+
+      - name: Install NSIS
+        shell: pwsh
+        run: |
+          if (-not (Test-Path "${env:ProgramFiles(x86)}\NSIS\makensis.exe")) { choco install nsis -y --no-progress }
+
+      - name: Build exe and installer
+        shell: pwsh
+        run: ./installer/build.ps1
+
+      - name: Package updater zip
+        shell: pwsh
+        run: |
+          $v = "${{ github.ref_name }}".TrimStart("v")
+          Compress-Archive -Path target/release/offsales-pos.exe -DestinationPath "dist/offsales-pos-$v-x86_64-pc-windows-msvc.zip"
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/OffSalesPOS-Setup-*.exe
+            dist/offsales-pos-*.zip
+          generate_release_notes: true
