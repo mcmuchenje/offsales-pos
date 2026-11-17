@@ -256,6 +256,10 @@ impl PosApp {
             if let Some(m) = db.setting("auto_lock_minutes").ok().flatten() {
                 self.auto_lock_minutes = m;
             }
+            // On a till this comes from the server, so it can change after a sync.
+            if let Some(r) = db.setting("update_repo").ok().flatten() {
+                self.update_repo = r;
+            }
         }
         let res = (|| -> anyhow::Result<_> {
             Ok((
@@ -1312,14 +1316,27 @@ impl PosApp {
                 );
                 ui.add_space(4.0);
                 field(ui, "Update source (GitHub owner/repo)", &mut self.update_repo, "e.g. myname/offsales-pos");
+                t::caption(ui, "On a shop network, set this once. The server passes it on to every till when they sync.");
 
                 let state = self.update.lock().unwrap().clone();
                 ui.add_space(4.0);
                 ui.horizontal_wrapped(|ui| {
                     let busy = matches!(state, UpdateState::Checking | UpdateState::Installing);
                     if ui.add_enabled(!busy, egui::Button::new("Check for updates")).clicked() {
-                        if let Some(db) = &self.db {
-                            let _ = db.set_setting("update_repo", self.update_repo.trim());
+                        let repo = self.update_repo.trim().to_string();
+                        let saved = self
+                            .db
+                            .as_ref()
+                            .and_then(|d| d.setting("update_repo").ok().flatten())
+                            .unwrap_or_default();
+                        if repo != saved {
+                            // Saved on the server (directly, or from a till via the server)
+                            // so every till picks it up on its next sync.
+                            let c = SettingsChange { values: vec![("update_repo".into(), repo.clone())] };
+                            match self.admin(|db, _| db.set_setting("update_repo", &repo), |r, s| r.change_settings(s, &c)) {
+                                Ok(()) => self.ok("Saved the update source."),
+                                Err(e) => self.err(e),
+                            }
                         }
                         updater::check(self.update.clone(), self.update_repo.clone(), ui.ctx().clone());
                     }
@@ -1411,7 +1428,16 @@ impl eframe::App for PosApp {
             self.dirty = true;
         }
         if self.dirty {
+            let repo_before = self.update_repo.clone();
             self.refresh();
+            // A till that just received an update source from the server checks it straight away.
+            let idle = matches!(
+                *self.update.lock().unwrap(),
+                UpdateState::Idle | UpdateState::UpToDate | UpdateState::Error(_)
+            );
+            if self.update_repo != repo_before && !self.update_repo.trim().is_empty() && idle {
+                updater::check(self.update.clone(), self.update_repo.clone(), ctx.clone());
+            }
         }
         let width = t::width_class(ctx.screen_rect().width());
 

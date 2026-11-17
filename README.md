@@ -60,12 +60,12 @@ To regenerate the seed from the spreadsheet: `python tools/xlsx_to_seed.py "Off 
 ## Updates
 Updates come from GitHub Releases:
 1. Push this project to a GitHub repo.
-2. Bump `version` in `Cargo.toml`, commit, then `git tag v0.2.0 && git push --tags`.
+2. Run `powershell -ExecutionPolicy Bypass -File toolselease.ps1` (add `minor`, `major` or a version like `1.2.3`; the default bumps the patch number). It bumps `version` in `Cargo.toml` and `Cargo.lock`, commits, tags `v<version>` and pushes. Doing it by hand: bump `version` in `Cargo.toml`, commit, then `git tag v0.2.1 && git push --tags`.
 3. `.github/workflows/release.yml` checks the tag matches `Cargo.toml`, runs the tests, and publishes two files with that repo baked in as the update source:
    - `OffSalesPOS-Setup-<version>.exe` – the installer, for setting up a new till
    - `offsales-pos-<version>-x86_64-pc-windows-msvc.zip` – what the in-app updater downloads
 
-The app checks quietly at startup, and on demand from Settings. When offline it just says so; the till is unaffected. The update source can also be set in Settings (`owner/repo`). If the repo is private, the app can't see releases – use a public repo for releases.
+The app checks quietly at startup, and on demand from Settings. When offline it just says so; the till is unaffected. The update source can also be set in Settings (`owner/repo`). On a shop network, set it once on the server (or from any till while it's online): the server passes it on to every till at the next sync, and each till then checks for updates. Tills on 0.1.0 predate this and need it typed in by hand once. If the repo is private, the app can't see releases – use a public repo for releases.
 
 ## Look and feel
 The theme lives in `src/theme.rs`: bottle-ink and shelf-grey palette, square corners throughout, Bahnschrift for prices and totals and Segoe UI for everything else (both ship with Windows; egui's fonts are the fallback). Layout adapts to the window width: below 820 logical px the cart docks under the products, and on short screens only the total and the Complete button stay pinned.
